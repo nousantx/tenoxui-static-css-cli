@@ -1,0 +1,43 @@
+{
+  "name": "tenoxui-static-css-cli",
+  "version": "0.1.0-alpha.0",
+  "description": "My cool project",
+  "author": "NOuSantx <nousantx@gmail.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/username/repository#readme",
+  "keywords": [
+    "cli",
+    "tenoxui",
+    "css-framework"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/username/repository.git"
+  },
+  "bugs": {
+    "url": "https://github.com/username/repository/issues"
+  },
+  "files": [
+    "cli.js",
+    "package.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "main": "cli.js",
+  "bin": {
+    "tui-css-run": "cli.js"
+  },
+  "scripts": {
+    "start": "echo 'hello world'"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "chokidar": "^4.0.3",
+    "glob": "^11.0.1"
+  },
+  "devDependencies": {
+    "@tenoxui/property": "^1.4.5",
+    "@tenoxui/static": "^0.3.1"
+  }
+}
