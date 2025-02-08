@@ -1,37 +1,57 @@
 # Static CSS Generator CLI
 
+A lightweight and fast TenoxUI Static CSS Generator.
+
+This package contains two mode to execute the script. You can either use this package as ready-to-use CLI tool, or you can create your runner with customizable rules.
+
 ## Installation
 
+```bash
+npm i tenoxui-static-css-cli --save-dev
 ```
-npm i tenoxui-static-css-cli
-```
+
+_Or use `-g` flag to install it globally as CLI tool_
 
 ## Usage
 
 ### CLI
 
 ```bash
-tui-css-run -h # to show available command
+tui-css-run -h
 ```
 
 ### Import
 
 ```javascript
-import TenoxUICLI from './src/cli.js'
+import { CLIEngine } from 'tenoxui-static-css-cli'
 
-const app = new TenoxUICLI({
-  // pass your tenoxui config here
-})
-
-app.generate({
+const cli = new CLIEngine({
   input: ['index.html', 'src/**/*.{jsx,tsx}'],
   output: 'dist/index.css',
-  watch: true,
-  minify: true,
-  sourceMap: false
+  tenoxui: {
+    /* TenoxUI main configuration here */
+  },
+  tabSize: 2,
+  watch: false,
+  minify: false,
+  prefix: '',
+  layer: false,
+  // additional tenoxui config for different layers
+  base: {},
+  theme: {},
+  components: {},
+  utilities: {}
 })
+
+cli.run()
+```
+
+Run the script :
+
+```bash
+node script.js
 ```
 
 ## License
 
-MIT
+MIT © 2025
