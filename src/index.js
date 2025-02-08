@@ -6,18 +6,19 @@ import { merge } from '@nousantx/someutils'
 import { watch } from 'chokidar'
 import { load } from 'cheerio'
 import { glob } from 'glob'
+import { SourceMapGenerator } from './lib/sourcemap.js'
 
 export class CLIEngine {
-  constructor({
-    config ={},
-    layer = false
-  }) {
-    this.config = config
+  constructor({ config = {}, layer = false, tabs = 2 }) {
+    const { apply, reserveClass, ...filteredConfig } = config
+    this.config = filteredConfig
     this.tenoxui = new TenoxUI(config)
+    this.mapper = new SourceMapGenerator()
     this.watchMode = false
     this.outputPath = ''
     this.inputPatterns = []
     this.layer = layer
+    this.tabs = tabs
     this.layers = new Map([
       ['base', ''],
       ['theme', ''],
@@ -92,14 +93,13 @@ export class CLIEngine {
 
     const ui = this.createTenoxUI(config).generateStylesheet()
     const currentStyles = this.layers.get(layer)
-    console.log(ui)
+
     this.layers.set(layer, currentStyles + ui)
 
     return this
   }
 
   createStyles(finalUtilities = '') {
-    console.log(this.config)
     // Ensure the layer order contains only existing layers
     const existingLayers = Array.from(this.layers.keys())
     const orderedLayers = this.layerOrder.filter(layer => existingLayers.includes(layer))
@@ -109,16 +109,17 @@ export class CLIEngine {
 
     // Append styles from each layer in order
     orderedLayers.forEach(layer => {
-      const layerStyles = this.layers.get(layer)
+      let layerStyles = this.layers.get(layer)
+
+      // Append finalUtilities inside the 'utilities' layer
+      if (layer === 'utilities' && finalUtilities.trim()) {
+        layerStyles += `\n${finalUtilities}`
+      }
+
       if (layerStyles.trim()) {
-        styles += this.layer ? `@layer ${layer} {\n${layerStyles}\n}\n` : layerStyles
+        styles += this.layer ? `@layer ${layer} {\n${this.addTabs(layerStyles)}\n}\n` : layerStyles
       }
     })
-
-    // Append final utilities outside the layers
-    if (finalUtilities.trim()) {
-      styles += `\n${finalUtilities}`
-    }
 
     return styles
   }
@@ -203,13 +204,19 @@ export class CLIEngine {
       .trim()
   }
 
-  generateSourceMap(css) {
-    // Basic source map generation
+  generateSourceMap(css, inputFiles) {
+    const outputFileName = path.basename(this.outputPath)
+    const sources = inputFiles.map(file => path.relative(process.cwd(), file))
+
+    // Generate placeholder mappings (basic structure)
+    const mappings = Array(css.split('\n').length).fill(';')
+
     return {
       version: 3,
-      file: path.basename(this.outputPath),
-      sources: [path.basename(this.outputPath)],
-      mappings: '',
+      file: outputFileName,
+      sources,
+      sourcesContent: sources.map(source => fs.readFileSync(source, 'utf-8')),
+      mappings: mappings.join(''),
       names: []
     }
   }
@@ -234,64 +241,35 @@ export class CLIEngine {
 
   async buildCSS() {
     try {
-      // create output directory if it doesn't exist
       const outputDir = path.dirname(this.outputPath)
-      if (!fs.existsSync(outputDir)) {
-        fs.mkdirSync(outputDir, { recursive: true })
-      }
+      if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true })
 
-      // resolve and scan files
       const files = this.resolveFiles(this.inputPatterns)
       const allClasses = new Set()
 
       console.log('\nProcessing files:')
       files.forEach(file => {
-        const relativePath = path.relative(process.cwd(), file)
-        console.log(`  → ${relativePath}`)
-        const classes = this.extractClassesFromFile(file)
-        classes.forEach(className => allClasses.add(className))
+        console.log(`  → ${path.relative(process.cwd(), file)}`)
+        this.extractClassesFromFile(file).forEach(className => allClasses.add(className))
       })
 
-      // generate CSS
-      console.log(`\nFound ${allClasses.size} unique classes`)
       this.tenoxui.processClassNames(allClasses)
+      let css = this.createStyles(this.tenoxui.generateStylesheet())
 
-      let css = this.tenoxui.generateStylesheet()
+      if (this.options.prefix) css = this.applyPrefix(css, this.options.prefix)
+      if (this.options.minify) css = this.minifyCSS(css)
 
-      // apply prefix if specified
-      if (this.options.prefix) {
-        css = this.applyPrefix(css, this.options.prefix)
-      }
-
-      // minify if requested
-      if (this.options.minify) {
-        css = this.minifyCSS(css)
-      }
-
-      // generate source map if requested
+      // Generate and attach source map
       if (this.options.sourceMap) {
-        const sourceMap = this.generateSourceMap(css)
+        const sourceMap = this.generateSourceMap(css, files)
+        fs.writeFileSync(`${this.outputPath}.map`, JSON.stringify(sourceMap, null, 2))
         css += `\n/*# sourceMappingURL=${path.basename(this.outputPath)}.map */`
-        fs.writeFileSync(`${this.outputPath}.map`, JSON.stringify(sourceMap))
       }
 
-      // write CSS file
       fs.writeFileSync(this.outputPath, css)
       console.log(`\n✨ Generated CSS file at ${this.outputPath}`)
-
-      if (this.options.minify) {
-        const stats = {
-          original: css.length,
-          minified: css.length,
-          saved: ((1 - css.length / css.length) * 100).toFixed(1)
-        }
-        console.log(`   Minified size: ${stats.minified} bytes (${stats.saved}% savings)`)
-      }
-
-      return true
     } catch (error) {
       console.error('Error building CSS:', error)
-      return false
     }
   }
 
