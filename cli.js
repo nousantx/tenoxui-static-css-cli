@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import path from 'node:path'
-import { CLIEngine } from './src/index.js'
+import { CLIEngine } from './dist/index.min.js'
 
 async function cli() {
   const args = process.argv.slice(2)

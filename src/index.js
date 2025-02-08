@@ -1,6 +1,5 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { TenoxUI } from '@tenoxui/static'
 import { merge } from '@nousantx/someutils'
 import { watch } from 'chokidar'
