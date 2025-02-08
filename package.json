@@ -1,11 +1,15 @@
 {
   "name": "tenoxui-static-css-cli",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0-alpha.1",
   "description": "TenoxUI CSS Static Generator",
   "author": "NOuSantx <nousantx@gmail.com>",
   "license": "MIT",
   "homepage": "https://github.com/nousantx/tenoxui-static-css-cli#readme",
-  "keywords": ["cli", "tenoxui", "css-framework"],
+  "keywords": [
+    "cli",
+    "tenoxui",
+    "css-framework"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/nousantx/tenoxui-static-css-cli.git"
@@ -13,23 +17,34 @@
   "bugs": {
     "url": "https://github.com/nousantx/tenoxui-static-css-cli/issues"
   },
-  "files": ["cli.js", "package.json", "README.md", "LICENSE"],
+  "files": [
+    "cli.js",
+    "dist",
+    "package.json",
+    "README.md",
+    "LICENSE"
+  ],
   "type": "module",
   "main": "src/index.js",
   "bin": {
     "tui-css-gen": "cli.js"
   },
   "scripts": {
-    "start": "echo 'hello world'"
+    "dev": "rollup -c -w",
+    "build": "rollup -c"
   },
   "dependencies": {
-    "@nousantx/someutils": "^0.6.1",
     "cheerio": "^1.0.0",
     "chokidar": "^4.0.3",
     "glob": "^11.0.1"
   },
   "devDependencies": {
+    "@nousantx/someutils": "^0.6.1",
+    "@rollup/plugin-commonjs": "^28.0.2",
+    "@rollup/plugin-node-resolve": "^16.0.0",
+    "@rollup/plugin-terser": "^0.4.4",
     "@tenoxui/property": "^1.4.5",
-    "@tenoxui/static": "^0.3.1"
+    "@tenoxui/static": "^0.3.1",
+    "rollup": "^4.34.6"
   }
 }
