@@ -10,8 +10,8 @@ async function cli() {
     output: 'dist/styles.css',
     watch: false,
     minify: false,
-    tabSize: 2,
     layer: false,
+    tabSize: 2,
     prefix: '',
     tenoxui: null
   }
@@ -83,9 +83,11 @@ Examples:
         process.exit(0)
     }
   }
-  const cliInstance = new CLIEngine(options)
 
-  await cliInstance.generate()
+  const { base = {}, theme = {}, components = {}, utilities = {} } = options.tenoxui
+
+  const cliInstance = new CLIEngine({ ...options, base, theme, components, utilities })
+  await cliInstance.run()
 }
 
 if (import.meta.url.startsWith('file:')) {

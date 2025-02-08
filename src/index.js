@@ -11,6 +11,7 @@ export class CLIEngine {
     tenoxui = {},
     input = ['src/**/*.{html,jsx,tsx,vue}'],
     output = 'dist/output.css',
+    layerOrder = ['base', 'theme', 'components', 'utilities'],
     tabSize = 2,
     layer = false,
     watch = false,
@@ -24,27 +25,27 @@ export class CLIEngine {
     const { apply, reserveClass, ...filteredConfig } = tenoxui
     this.config = filteredConfig
     this.tenoxui = new TenoxUI(tenoxui)
-    this.watchMode = false
-    this.outputPath = ''
-    this.inputPatterns = []
-    this.layer = layer
+    // configuration options
+    this.inputPatterns = Array.isArray(input) ? input : [input]
+    this.outputPath = output
     this.tabSize = tabSize
-    this.input = input
-    this.output = output
     this.watch = watch
     this.minify = minify
     this.prefix = prefix
+    this.layer = layer
+    this.layerOrder = layerOrder
+    // custom tenoxui configuration for exact layer
     this.baseConfig = base
     this.themeConfig = theme
     this.componentsConfig = components
     this.utilitiesConfig = utilities
+
     this.layers = new Map([
       ['base', ''],
       ['theme', ''],
       ['components', ''],
       ['utilities', '']
     ])
-    this.layerOrder = ['base', 'theme', 'components', 'utilities']
   }
 
   /** #?
@@ -262,14 +263,9 @@ export class CLIEngine {
     }
   }
 
-  async generate() {
-    this.watchMode = this.watch
-    this.outputPath = this.output
-    this.inputPatterns = Array.isArray(this.input) ? this.input : [this.input]
-
+  async run() {
     console.log('🔍 Scanning input files...')
     await this.buildCSS()
-
     if (this.watch) {
       console.log('👀 Watching for changes...')
       this.watchFiles()
