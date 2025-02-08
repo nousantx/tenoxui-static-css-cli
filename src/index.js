@@ -6,19 +6,39 @@ import { merge } from '@nousantx/someutils'
 import { watch } from 'chokidar'
 import { load } from 'cheerio'
 import { glob } from 'glob'
-import { SourceMapGenerator } from './lib/sourcemap.js'
 
 export class CLIEngine {
-  constructor({ config = {}, layer = false, tabs = 2 }) {
-    const { apply, reserveClass, ...filteredConfig } = config
+  constructor({
+    tenoxui = {},
+    input = ['src/**/*.{html,jsx,tsx,vue}'],
+    output = 'dist/output.css',
+    tabSize = 2,
+    layer = false,
+    watch = false,
+    minify = false,
+    prefix = '',
+    base = {},
+    theme = {},
+    components = {},
+    utilities = {}
+  }) {
+    const { apply, reserveClass, ...filteredConfig } = tenoxui
     this.config = filteredConfig
-    this.tenoxui = new TenoxUI(config)
-    this.mapper = new SourceMapGenerator()
+    this.tenoxui = new TenoxUI(tenoxui)
     this.watchMode = false
     this.outputPath = ''
     this.inputPatterns = []
     this.layer = layer
-    this.tabs = tabs
+    this.tabSize = tabSize
+    this.input = input
+    this.output = output
+    this.watch = watch
+    this.minify = minify
+    this.prefix = prefix
+    this.baseConfig = base
+    this.themeConfig = theme
+    this.componentsConfig = components
+    this.utilitiesConfig = utilities
     this.layers = new Map([
       ['base', ''],
       ['theme', ''],
@@ -26,11 +46,6 @@ export class CLIEngine {
       ['utilities', '']
     ])
     this.layerOrder = ['base', 'theme', 'components', 'utilities']
-    this.options = {
-      minify: false,
-      sourceMap: false,
-      prefix: ''
-    }
   }
 
   /** #?
@@ -39,11 +54,11 @@ export class CLIEngine {
    * Basic utilities for make the development easier and more efficient
    */
 
-  addTabs(str, size = 2) {
+  addTabs(str, size = 2, fixedTabs = false) {
     return str
       .split('\n')
-      .filter(line => line.trim() !== '')
-      .map(line => `${' '.repeat(size)}${line}`)
+      .filter((line) => line.trim() !== '')
+      .map((line) => `${' '.repeat(fixedTabs ? sise : this.tabSize)}${line}`)
       .join('\n')
   }
 
@@ -70,14 +85,14 @@ export class CLIEngine {
   removeLayer(layerName) {
     if (layerName !== 'base' && layerName !== 'theme') {
       this.layers.delete(layerName)
-      this.layerOrder = this.layerOrder.filter(layer => layer !== layerName)
+      this.layerOrder = this.layerOrder.filter((layer) => layer !== layerName)
     }
     return this
   }
 
   setLayerOrder(order) {
     const existingLayers = Array.from(this.layers.keys())
-    const missingLayers = existingLayers.filter(layer => !order.includes(layer))
+    const missingLayers = existingLayers.filter((layer) => !order.includes(layer))
     this.layerOrder = [...order, ...missingLayers]
     return this
   }
@@ -100,18 +115,17 @@ export class CLIEngine {
   }
 
   createStyles(finalUtilities = '') {
-    // Ensure the layer order contains only existing layers
     const existingLayers = Array.from(this.layers.keys())
-    const orderedLayers = this.layerOrder.filter(layer => existingLayers.includes(layer))
+    const orderedLayers = this.layerOrder.filter((layer) => existingLayers.includes(layer))
 
-    // Generate @layer directive if layer mode is enabled
     let styles = this.layer ? `@layer ${orderedLayers.join(', ')};\n` : ''
 
-    // Append styles from each layer in order
-    orderedLayers.forEach(layer => {
+    orderedLayers.forEach((layer) => {
+      if (Object.entries(this[`${layer}Config`]).length > 0)
+        this.addStyle(layer, this[`${layer}Config`])
+
       let layerStyles = this.layers.get(layer)
 
-      // Append finalUtilities inside the 'utilities' layer
       if (layer === 'utilities' && finalUtilities.trim()) {
         layerStyles += `\n${finalUtilities}`
       }
@@ -133,8 +147,8 @@ export class CLIEngine {
   resolveFiles(patterns) {
     return Array.from(
       new Set(
-        patterns.flatMap(pattern =>
-          glob.sync(pattern, { absolute: true }).map(file => path.resolve(file))
+        patterns.flatMap((pattern) =>
+          glob.sync(pattern, { absolute: true }).map((file) => path.resolve(file))
         )
       )
     )
@@ -149,7 +163,7 @@ export class CLIEngine {
         const $ = load(content)
         $('[class]').each((_, element) => {
           const classNames = $(element).attr('class').split(/\s+/)
-          classNames.forEach(className => classes.add(className))
+          classNames.forEach((className) => classes.add(className))
         })
         break
       }
@@ -160,22 +174,22 @@ export class CLIEngine {
         const classRegex = /class(?:Name)?=["'`]([^"'`]+)["'`]/g
         let match
         while ((match = classRegex.exec(content)) !== null) {
-          match[1].split(/\s+/).forEach(className => classes.add(className))
+          match[1].split(/\s+/).forEach((className) => classes.add(className))
         }
         // handle template literals
         const templateRegex = /class(?:Name)?={\s*`([^`]+)`\s*}/g
         while ((match = templateRegex.exec(content)) !== null) {
-          match[1].split(/\s+/).forEach(className => classes.add(className))
+          match[1].split(/\s+/).forEach((className) => classes.add(className))
         }
         const conditionalRegex = /class(?:Name)?={\s*(?:[^}]+?\?[^:]+?:[^}]+?|\{[^}]+\})\s*}/g
         while ((match = conditionalRegex.exec(content)) !== null) {
           const classString = match[0]
           const potentialClasses = classString.match(/['"`][^'"`]+['"`]/g) || []
-          potentialClasses.forEach(cls => {
+          potentialClasses.forEach((cls) => {
             cls
               .replace(/['"`]/g, '')
               .split(/\s+/)
-              .forEach(className => classes.add(className))
+              .forEach((className) => classes.add(className))
           })
         }
         break
@@ -192,7 +206,7 @@ export class CLIEngine {
    */
 
   applyPrefix(css, prefix) {
-    return css.replace(/\.[\w-]+/g, match => `.${prefix}${match.slice(1)}`)
+    return css.replace(/\.[\w-]+/g, (match) => `.${prefix}${match.slice(1)}`)
   }
 
   minifyCSS(css) {
@@ -204,23 +218,6 @@ export class CLIEngine {
       .trim()
   }
 
-  generateSourceMap(css, inputFiles) {
-    const outputFileName = path.basename(this.outputPath)
-    const sources = inputFiles.map(file => path.relative(process.cwd(), file))
-
-    // Generate placeholder mappings (basic structure)
-    const mappings = Array(css.split('\n').length).fill(';')
-
-    return {
-      version: 3,
-      file: outputFileName,
-      sources,
-      sourcesContent: sources.map(source => fs.readFileSync(source, 'utf-8')),
-      mappings: mappings.join(''),
-      names: []
-    }
-  }
-
   watchFiles() {
     const watcher = watch(this.inputPatterns, {
       ignored: /(^|[\/\\])\../,
@@ -230,13 +227,13 @@ export class CLIEngine {
     let debounceTimer
 
     watcher
-      .on('change', file => {
+      .on('change', (file) => {
         const relativePath = path.relative(process.cwd(), file)
         console.log(`\nFile changed: ${relativePath}`)
         clearTimeout(debounceTimer)
         debounceTimer = setTimeout(() => this.buildCSS(), 500)
       })
-      .on('error', error => console.error(`Watcher error: ${error}`))
+      .on('error', (error) => console.error(`Watcher error: ${error}`))
   }
 
   async buildCSS() {
@@ -248,23 +245,16 @@ export class CLIEngine {
       const allClasses = new Set()
 
       console.log('\nProcessing files:')
-      files.forEach(file => {
+      files.forEach((file) => {
         console.log(`  → ${path.relative(process.cwd(), file)}`)
-        this.extractClassesFromFile(file).forEach(className => allClasses.add(className))
+        this.extractClassesFromFile(file).forEach((className) => allClasses.add(className))
       })
 
       this.tenoxui.processClassNames(allClasses)
       let css = this.createStyles(this.tenoxui.generateStylesheet())
 
-      if (this.options.prefix) css = this.applyPrefix(css, this.options.prefix)
-      if (this.options.minify) css = this.minifyCSS(css)
-
-      // Generate and attach source map
-      if (this.options.sourceMap) {
-        const sourceMap = this.generateSourceMap(css, files)
-        fs.writeFileSync(`${this.outputPath}.map`, JSON.stringify(sourceMap, null, 2))
-        css += `\n/*# sourceMappingURL=${path.basename(this.outputPath)}.map */`
-      }
+      if (this.prefix) css = this.applyPrefix(css, this.prefix)
+      if (this.minify) css = this.minifyCSS(css)
 
       fs.writeFileSync(this.outputPath, css)
       console.log(`\n✨ Generated CSS file at ${this.outputPath}`)
@@ -273,29 +263,15 @@ export class CLIEngine {
     }
   }
 
-  async generate(options = {}) {
-    const {
-      input = ['src/**/*.{html,jsx,tsx,vue}'],
-      output = 'dist/output.css',
-      watch = false,
-      minify = false,
-      sourceMap = false,
-      prefix = ''
-    } = options
-
-    this.watchMode = watch
-    this.outputPath = output
-    this.inputPatterns = Array.isArray(input) ? input : [input]
-    this.options = {
-      minify,
-      sourceMap,
-      prefix
-    }
+  async generate() {
+    this.watchMode = this.watch
+    this.outputPath = this.output
+    this.inputPatterns = Array.isArray(this.input) ? this.input : [this.input]
 
     console.log('🔍 Scanning input files...')
     await this.buildCSS()
 
-    if (watch) {
+    if (this.watch) {
       console.log('👀 Watching for changes...')
       this.watchFiles()
     }

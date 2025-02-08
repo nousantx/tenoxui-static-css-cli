@@ -10,9 +10,10 @@ async function cli() {
     output: 'dist/styles.css',
     watch: false,
     minify: false,
-    sourceMap: false,
+    tabSize: 2,
+    layer: false,
     prefix: '',
-    config: null
+    tenoxui: null
   }
 
   for (let i = 0; i < args.length; i++) {
@@ -26,17 +27,21 @@ async function cli() {
       case '-o':
         options.output = args[++i]
         break
+      case '--tabs':
+      case '-t':
+        options.tabSize = args[++i]
+        break
       case '--watch':
       case '-w':
         options.watch = true
         break
+      case '--layer':
+      case '-l':
+        options.layer = true
+        break
       case '--minify':
       case '-m':
         options.minify = true
-        break
-      case '--source-map':
-      case '-s':
-        options.sourceMap = true
         break
       case '--prefix':
       case '-p':
@@ -48,7 +53,7 @@ async function cli() {
           const configPath = path.resolve(args[++i])
           const configModule = await import(configPath)
 
-          options.config = configModule.default
+          options.tenoxui = configModule.default
         } catch (error) {
           console.error('Error loading config file:', error)
           process.exit(1)
@@ -63,30 +68,29 @@ Options:
   --input, -i      Input files (glob patterns supported, comma-separated)
                    default: "src/**/*.{html,jsx,tsx,vue}"
   --output, -o     Output CSS file (default: "dist/styles.css")
+  --layer, -l      Use modern CSS layer query (default: false)
+  --tabs, -t       Define spaces for nested styles (default: 2)
+  --config, -c     Path to config file
   --watch, -w      Watch mode (default: false)
   --minify, -m     Minify output CSS (default: false)
-  --source-map, -s Generate source maps (default: false)
   --prefix, -p     Add prefix to all class names (default: "")
-  --config, -c     Path to config file
   --help, -h       Show this help message
 
 Examples:
   tui-css-run --input "index.html,src/**/*.jsx" --output dist/styles.css --watch
-  tui-css-run -i "components/*.tsx" -o styles.css -m -s
+  tui-css-run -i "components/*.tsx" -o styles.css -m -s -l
 `)
         process.exit(0)
     }
   }
-  const cliInstance = new CLIEngine({ config: options.config })
+  const cliInstance = new CLIEngine(options)
 
-  await cliInstance.generate(options)
+  await cliInstance.generate()
 }
 
 if (import.meta.url.startsWith('file:')) {
-  cli().catch(err => {
+  cli().catch((err) => {
     console.error('Error:', err)
     process.exit(1)
   })
 }
-
-
